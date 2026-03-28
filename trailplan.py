@@ -726,7 +726,7 @@ with map_col:
             for i, url in enumerate(photos):
                 with cols[i]:
                     st.markdown(f"""
-                    <div style="height:160px;overflow:hidden;border:1px solid #2a3d2b">
+                    <div style="height:240px;overflow:hidden;border:1px solid #2a3d2b">
                         <img src="{url}"
                              style="width:100%;height:100%;object-fit:cover;display:block"/>
                     </div>
