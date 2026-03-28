@@ -8,7 +8,7 @@ from streamlit_folium import st_folium
 
 load_dotenv()
 
-client = Groq(api_key=st.secrets["API_KEY"])
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -180,7 +180,7 @@ footer {visibility: hidden;}
 
 # ── Fetch park photos ─────────────────────────────────────────────────────────
 # Hardcoded Wikimedia Commons direct URLs — reliable, no API calls needed
-PARK_PHOTOS = {
+PARK_PHOTOS_UNUSED = {
     "Acadia":                       [
         "https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Bass_Harbor_Head_Light_Station_2016.jpg/800px-Bass_Harbor_Head_Light_Station_2016.jpg",
         "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Jordan_Pond%2C_Acadia_National_Park.jpg/800px-Jordan_Pond%2C_Acadia_National_Park.jpg",
@@ -498,8 +498,13 @@ PARK_PHOTOS = {
     ],
 }
 
-def get_park_photos(park_name: str) -> list[str]:
-    return PARK_PHOTOS.get(park_name, [])
+def get_park_photo_urls(park_name: str) -> list[str]:
+    encoded = park_name.replace(" ", "+")
+    return [
+        f"https://source.unsplash.com/600x400/?{encoded}+national+park+landscape",
+        f"https://source.unsplash.com/600x400/?{encoded}+national+park+trail",
+        f"https://source.unsplash.com/600x400/?{encoded}+national+park+nature",
+    ]
 
 
 # ── Park data with coordinates ────────────────────────────────────────────────
@@ -653,36 +658,19 @@ with map_col:
 
     # ── Park photos below map ─────────────────────────────────────────────────
     if st.session_state.selected_park:
+        park = st.session_state.selected_park
+        photos = get_park_photo_urls(park)
         st.markdown(f"""
         <div style="font-size:10px;letter-spacing:0.16em;text-transform:uppercase;
                     color:#6a856b;margin:16px 0 10px">
-            📸 {st.session_state.selected_park} National Park
+            📸 {park} National Park
+        </div>
+        <div style="display:flex;gap:8px">
+            <img src="{photos[0]}" style="width:33%;height:160px;object-fit:cover;border:1px solid #2a3d2b" />
+            <img src="{photos[1]}" style="width:33%;height:160px;object-fit:cover;border:1px solid #2a3d2b" />
+            <img src="{photos[2]}" style="width:33%;height:160px;object-fit:cover;border:1px solid #2a3d2b" />
         </div>
         """, unsafe_allow_html=True)
-
-        with st.spinner("Loading photos..."):
-            photos = get_park_photos(st.session_state.selected_park)
-
-        if photos:
-            photo_cols = st.columns(len(photos))
-            for i, photo_url in enumerate(photos):
-                with photo_cols[i]:
-                    st.markdown(f"""
-                    <div style="overflow:hidden;height:160px;background:#131f14;border:1px solid #2a3d2b">
-                        <img src="{photo_url}"
-                             style="width:100%;height:100%;object-fit:cover;display:block;
-                                    transition:transform 0.3s ease"
-                             onmouseover="this.style.transform='scale(1.05)'"
-                             onmouseout="this.style.transform='scale(1)'"
-                        />
-                    </div>
-                    """, unsafe_allow_html=True)
-        else:
-            st.markdown("""
-            <div style="color:#6a856b;font-size:12px;font-style:italic;padding:12px 0">
-                No photos available for this park.
-            </div>
-            """, unsafe_allow_html=True)
 
 with settings_col:
     st.markdown("### ⚙️ Trip Settings")
