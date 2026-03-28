@@ -2,6 +2,7 @@ import streamlit as st
 from groq import Groq
 import json
 import os
+import requests
 from dotenv import load_dotenv
 import folium
 from streamlit_folium import st_folium
@@ -498,13 +499,66 @@ PARK_PHOTOS_UNUSED = {
     ],
 }
 
+@st.cache_data(show_spinner=False)
 def get_park_photo_urls(park_name: str) -> list[str]:
-    encoded = park_name.replace(" ", "+")
-    return [
-        f"https://source.unsplash.com/600x400/?{encoded}+national+park+landscape",
-        f"https://source.unsplash.com/600x400/?{encoded}+national+park+trail",
-        f"https://source.unsplash.com/600x400/?{encoded}+national+park+nature",
-    ]
+    import requests
+    try:
+        # Use Wikipedia's REST API to get page summary + thumbnail
+        slug = park_name.replace(" ", "_") + "_National_Park"
+        headers = {"User-Agent": "TrailPlanApp/1.0"}
+
+        # Fetch main page thumbnail
+        r = requests.get(
+            f"https://en.wikipedia.org/api/rest_v1/page/summary/{slug}",
+            headers=headers, timeout=8
+        )
+        data = r.json()
+        thumb = data.get("thumbnail", {}).get("source", "")
+        original = data.get("originalimage", {}).get("source", "")
+
+        # Also search Wikimedia Commons for more images
+        commons_r = requests.get(
+            "https://commons.wikimedia.org/w/api.php",
+            params={
+                "action": "query",
+                "generator": "search",
+                "gsrnamespace": 6,
+                "gsrsearch": f"{park_name} National Park",
+                "gsrlimit": 10,
+                "prop": "imageinfo",
+                "iiprop": "url",
+                "iiurlwidth": 600,
+                "format": "json"
+            },
+            headers=headers, timeout=8
+        )
+        commons_data = commons_r.json()
+        pages = commons_data.get("query", {}).get("pages", {}).values()
+        commons_urls = []
+        for page in pages:
+            info = page.get("imageinfo", [])
+            if info:
+                url = info[0].get("thumburl") or info[0].get("url", "")
+                title = page.get("title", "").lower()
+                if url and any(url.lower().endswith(ext) for ext in [".jpg", ".jpeg", ".png"]):
+                    if not any(skip in title for skip in ["map", "logo", "seal", "flag", "icon"]):
+                        commons_urls.append(url)
+
+        # Build final list — thumbnail first, then commons
+        results = []
+        if original:
+            results.append(original)
+        elif thumb:
+            results.append(thumb)
+        results.extend(commons_urls)
+
+        # Deduplicate
+        seen = set()
+        unique = [u for u in results if not (u in seen or seen.add(u))]
+        return unique[:3] if len(unique) >= 3 else unique
+
+    except Exception:
+        return []
 
 
 # ── Park data with coordinates ────────────────────────────────────────────────
@@ -659,18 +713,30 @@ with map_col:
     # ── Park photos below map ─────────────────────────────────────────────────
     if st.session_state.selected_park:
         park = st.session_state.selected_park
-        photos = get_park_photo_urls(park)
         st.markdown(f"""
         <div style="font-size:10px;letter-spacing:0.16em;text-transform:uppercase;
                     color:#6a856b;margin:16px 0 10px">
             📸 {park} National Park
         </div>
-        <div style="display:flex;gap:8px">
-            <img src="{photos[0]}" style="width:33%;height:160px;object-fit:cover;border:1px solid #2a3d2b" />
-            <img src="{photos[1]}" style="width:33%;height:160px;object-fit:cover;border:1px solid #2a3d2b" />
-            <img src="{photos[2]}" style="width:33%;height:160px;object-fit:cover;border:1px solid #2a3d2b" />
-        </div>
         """, unsafe_allow_html=True)
+
+        photos = get_park_photo_urls(park)
+        if photos:
+            cols = st.columns(len(photos))
+            for i, url in enumerate(photos):
+                with cols[i]:
+                    st.markdown(f"""
+                    <div style="height:160px;overflow:hidden;border:1px solid #2a3d2b">
+                        <img src="{url}"
+                             style="width:100%;height:100%;object-fit:cover;display:block"/>
+                    </div>
+                    """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div style="color:#6a856b;font-size:12px;font-style:italic;padding:8px 0">
+                Photos unavailable for this park.
+            </div>
+            """, unsafe_allow_html=True)
 
 with settings_col:
     st.markdown("### ⚙️ Trip Settings")
