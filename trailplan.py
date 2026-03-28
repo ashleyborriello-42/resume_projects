@@ -8,7 +8,7 @@ from streamlit_folium import st_folium
 
 load_dotenv()
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+client = Groq(api_key=os.getenv("API_KEY"))
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
