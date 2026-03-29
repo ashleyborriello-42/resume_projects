@@ -4,3 +4,6 @@ folium
 streamlit-folium
 python-dotenv
 requests
+openmeteo-requests
+requests-cache
+retry-requests
