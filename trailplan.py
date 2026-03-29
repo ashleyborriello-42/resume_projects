@@ -885,7 +885,7 @@ def render_itinerary(result, days, experience, max_miles, month, group):
         for trail in day["trails"]:
             trail_name_encoded = trail['name'].replace(' ', '+')
             park_encoded = st.session_state.selected_park.replace(' ', '+')
-            alltrails_url = f"https://www.alltrails.com/explore?q={trail_name_encoded}+{park_encoded}"
+            google_url = f"https://www.google.com/search?q={trail_name_encoded}+{park_encoded}+alltrails"
             highlights = " &nbsp;·&nbsp; ".join(trail.get("highlights", []))
 
             st.markdown(f"""
@@ -902,7 +902,7 @@ def render_itinerary(result, days, experience, max_miles, month, group):
                 {f'<div style="font-size:12px;color:#6a856b;margin-bottom:8px">✦ {highlights}</div>' if highlights else ''}
                 <div style="font-size:13px;color:#6a856b;line-height:1.6;margin-bottom:10px">{trail['description']}</div>
                 <div class="parking-note">🅿️ {trail['parking']}</div>
-                <a href="{alltrails_url}" target="_blank" style="font-size:12px;color:#7ec850;text-decoration:none;border:1px solid rgba(126,200,80,0.3);padding:4px 12px;display:inline-block;margin-top:4px">🌿 View on AllTrails</a>
+                <a href="{google_url}" target="_blank" style="font-size:12px;color:#7ec850;text-decoration:none;border:1px solid rgba(126,200,80,0.3);padding:4px 12px;display:inline-block;margin-top:4px">🌿 Find on AllTrails via Google</a>
             </div>
             """, unsafe_allow_html=True)
 
